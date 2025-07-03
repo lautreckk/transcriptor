@@ -37,11 +37,48 @@ function App() {
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      if (file.type !== 'audio/mp3' && !file.name.endsWith('.mp3')) {
-        setError('Por favor, selecione apenas arquivos MP3.');
+      const isMp3 = file.type === 'audio/mp3' || file.name.endsWith('.mp3');
+      const isMp4 = file.type === 'video/mp4' || file.name.endsWith('.mp4');
+      if (!isMp3 && !isMp4) {
+        setError('Por favor, selecione apenas arquivos MP3 ou MP4.');
         return;
       }
-      splitAndUpload(file);
+      processAndUpload(file, isMp4);
+    }
+  };
+
+  const processAndUpload = async (file: File, isMp4: boolean) => {
+    if (!isMp4) {
+      await splitAndUpload(file);
+      return;
+    }
+    setIsUploading(true);
+    setError('');
+    setTranscription('');
+    setUploadProgress(0);
+    setIsTranscribing(false);
+    try {
+      if (!ffmpeg.current.loaded) {
+        await ffmpeg.current.load();
+      }
+      const fileData = await readFileAsArrayBuffer(file);
+      await ffmpeg.current.writeFile('input.mp4', fileData);
+      await ffmpeg.current.exec([
+        '-i', 'input.mp4',
+        '-vn', // remove video
+        '-ar', '44100',
+        '-ac', '2',
+        '-b:a', '192k',
+        'output.mp3'
+      ]);
+      const mp3Data = await ffmpeg.current.readFile('output.mp3');
+      const mp3Blob = new Blob([mp3Data.buffer], { type: 'audio/mp3' });
+      const mp3File = new File([mp3Blob], file.name.replace(/\.mp4$/, '.mp3'), { type: 'audio/mp3' });
+      await splitAndUpload(mp3File);
+    } catch (err) {
+      setError('Erro ao converter vídeo para áudio.');
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -297,7 +334,7 @@ function App() {
           <input
             ref={fileInputRef}
             type="file"
-            accept=".mp3,audio/mp3"
+            accept=".mp3,audio/mp3,.mp4,video/mp4"
             onChange={handleFileSelect}
             className="file-input"
             id="file-input"
@@ -306,9 +343,9 @@ function App() {
             <div className="upload-content">
               <div className="upload-icon">🎵</div>
               <p className="upload-text">
-                {isUploading ? 'Fazendo upload...' : 'Clique ou arraste um arquivo MP3 aqui'}
+                {isUploading ? 'Fazendo upload...' : 'Clique ou arraste um arquivo MP3 ou MP4 aqui'}
               </p>
-              <p className="upload-subtext">Apenas arquivos MP3 são aceitos</p>
+              <p className="upload-subtext">Apenas arquivos MP3 ou MP4 são aceitos</p>
             </div>
           </label>
         </div>
