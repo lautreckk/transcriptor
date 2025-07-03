@@ -17,6 +17,18 @@ function App() {
   const [recordedChunks, setRecordedChunks] = useState<Blob[]>([]);
   const [recordedAudio, setRecordedAudio] = useState<string|null>(null);
   const [isUploadingRecording, setIsUploadingRecording] = useState(false);
+  const [language, setLanguage] = useState<string>('');
+  const languageOptions = [
+    { label: 'Português', value: 'pt' },
+    { label: 'Inglês', value: 'en' },
+    { label: 'Espanhol', value: 'es' },
+    { label: 'Francês', value: 'fr' },
+    { label: 'Alemão', value: 'de' },
+    { label: 'Italiano', value: 'it' },
+    { label: 'Japonês', value: 'ja' },
+    { label: 'Chinês', value: 'zh' },
+    { label: 'Outro', value: 'auto' },
+  ];
 
   React.useEffect(() => {
     ffmpeg.current = new FFmpeg();
@@ -35,6 +47,10 @@ function App() {
   };
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!language) {
+      setError('Por favor, selecione a linguagem do áudio.');
+      return;
+    }
     const file = event.target.files?.[0];
     if (file) {
       const isMp3 = file.type === 'audio/mp3' || file.name.endsWith('.mp3');
@@ -48,6 +64,10 @@ function App() {
   };
 
   const processAndUpload = async (file: File, isMp4: boolean) => {
+    if (!language) {
+      setError('Por favor, selecione a linguagem do áudio.');
+      return;
+    }
     if (!isMp4) {
       await splitAndUpload(file);
       return;
@@ -163,7 +183,8 @@ function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           requestId,
-          audioUrls: urls
+          audioUrls: urls,
+          language
         })
       });
       if (!response.ok) {
@@ -202,6 +223,10 @@ function App() {
 
   // Gravação de áudio
   const handleStartRecording = async () => {
+    if (!language) {
+      setError('Por favor, selecione a linguagem do áudio.');
+      return;
+    }
     setError('');
     setRecordedAudio(null);
     setRecordedChunks([]);
@@ -304,6 +329,21 @@ function App() {
         <h1 className="title">Transcritor de Áudio</h1>
         <div className="headline">100% Grátis</div>
         <div className="subheadline">Seus áudios não ficam gravados, é criptografado e excluído do banco de dados, relaxe!</div>
+        <div style={{ margin: '0 auto 18px auto', maxWidth: 320 }}>
+          <label htmlFor="language-select" style={{ fontWeight: 600, display: 'block', marginBottom: 6 }}>Selecione a linguagem do áudio *</label>
+          <select
+            id="language-select"
+            value={language}
+            onChange={e => setLanguage(e.target.value)}
+            className="language-select"
+            required
+          >
+            <option value="">Selecione...</option>
+            {languageOptions.map(opt => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
+        </div>
         <div style={{ display: 'flex', gap: 16, justifyContent: 'center', marginBottom: 16 }}>
           <button
             className="record-btn"
