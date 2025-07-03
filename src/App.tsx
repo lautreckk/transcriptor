@@ -3,11 +3,6 @@ import { supabase } from './supabase';
 import './App.css';
 import { FFmpeg } from '@ffmpeg/ffmpeg';
 
-interface TranscriptionResponse {
-  transcription: string;
-  status: 'success' | 'error';
-}
-
 function App() {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
